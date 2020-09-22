@@ -48,7 +48,7 @@ export class AuthService {
             username: user.username,
             userId: user._id
         });
-        console.log(token);
+        // console.log(token);
         return token;
     }
 }

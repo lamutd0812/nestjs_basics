@@ -1,10 +1,11 @@
 import {
-    Body, Controller, Delete, Get, HttpStatus,
-    NotFoundException, Param, Post, Put, Req, Res, UnauthorizedException
+    Body, Controller, Delete, Get,
+    NotFoundException, Param, Post, Put, Req, UnauthorizedException, UseGuards
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { CreateUserDTO } from './dto/create-user.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 
 @Controller('auth')
@@ -15,62 +16,63 @@ export class AuthController {
 
     // CRUD
     @Get('/users')
-    async getUsers(@Res() res) {
+    async getUsers() {
         const users = await this.authService.getUsers();
-        return res.status(HttpStatus.OK).json(users);
+        return users;
     }
 
+    @UseGuards(JwtAuthGuard)
     @Get('/user/:userId')
     async getUser(
         @Req() req: Request,
-        @Res() res,
-        @Param('userId') userId
+        @Param('userId') userId: string
     ) {
+        console.log(req.user);
         const user = await this.authService.getUser(userId);
         if (!user) {
             throw new NotFoundException('User not exists!');
         }
-        return res.status(HttpStatus.OK).json(user);
+        return user;
     }
 
     @Post('/user')
-    async registerUser(@Res() res, @Body() createUserDTO: CreateUserDTO) {
+    async registerUser(@Body() createUserDTO: CreateUserDTO) {
         const newUser = await this.authService.registerUser(createUserDTO);
-        return res.status(HttpStatus.OK).json({
+        return {
             message: 'Register Successfully!',
             user: newUser
-        });
+        };
     }
 
     @Put('user/:userId')
-    async updateUser(@Res() res, @Param('userId') userId, @Body() createUserDTO: CreateUserDTO) {
+    async updateUser(@Param('userId') userId, @Body() createUserDTO: CreateUserDTO) {
         const updatedUser = await this.authService.updateUser(userId, createUserDTO);
-        return res.status(HttpStatus.OK).json({
+        return {
             message: 'Updated User Information',
             user: updatedUser
-        });
+        };
     }
 
     @Delete('user/:userId')
-    async deleteUser(@Res() res, @Param('userId') userId) {
+    async deleteUser(@Param('userId') userId) {
         const deletedUser = await this.authService.deleteUser(userId);
-        return res.status(HttpStatus.OK).json({
+        return {
             message: 'Deleted User!',
             userId: deletedUser._id
-        });
+        };
     }
 
     // Authentication
     @Post('/login')
     async userLogin(@Body() createUserDTO: CreateUserDTO) {
         const user = await this.authService.findUser(createUserDTO.username);
-        if(!user || createUserDTO.password !== user.password) {
+        if (!user || createUserDTO.password !== user.password) {
             throw new UnauthorizedException('User or Password Incorrect!');
         }
         return {
             message: 'Login Successfully!',
             token: this.authService.generateToken(user),
-            user
+            userId: user._id
         };
     }
 }
